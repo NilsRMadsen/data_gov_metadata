@@ -1,0 +1,116 @@
+version: 2
+
+models:
+  - name: stg_datagov__group
+    description: "One record for each dataset group"
+    columns:
+      - name: group_id
+        data_type: uuid
+        description: PK
+        tests:
+          - unique
+          - not_null
+      - name: name
+        data_type: varchar
+      - name: title
+        data_type: varchar
+      - name: display_name
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: group_status
+        data_type: varchar
+      - name: approval_status
+        data_type: varchar
+      - name: created_at
+        data_type: timestamp
+    
+  - name: stg_datagov__license
+    description: "One record for each dataset license type"
+    columns:
+      - name: license_id
+        data_type: varchar
+        description: PK
+        tests:
+          - unique
+          - not_null
+      - name: title
+        data_type: varchar
+      - name: license_status
+        data_type: varchar
+      - name: domain_content
+        data_type: boolean
+      - name: domain_data
+        data_type: boolean
+      - name: domain_software
+        data_type: boolean
+      - name: is_generic
+        data_type: boolean
+      - name: od_conformance
+        data_type: varchar
+      - name: osd_conformance
+        data_type: varchar
+      - name: license_url
+        data_type: varchar
+
+  - name: stg_datagov__organization
+    description: "One record for each government organization that publishes datasets on Data.gov"
+    columns:
+      - name: organization_id
+        data_type: uuid
+        description: PK
+        tests:
+          - unique
+          - not_null
+      - name: name
+        data_type: varchar
+      - name: title
+        data_type: varchar
+      - name: display_name
+        data_type: varchar
+      - name: organization_type
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: organization_status
+        data_type: varchar
+      - name: approval_status
+        data_type: varchar
+      - name: created_at
+        data_type: timestamp
+
+  - name: stg_datagov__package
+    description: "One record per dataset published on Data.gov"
+    columns:
+      - name: package_id
+        data_type: uuid
+        description: PK
+        tests:
+          - unique
+          - not_null
+      - name: name
+        data_type: varchar
+      - name: title
+        data_type: varchar
+      - name: notes
+        data_type: varchar
+      - name: organization_id
+        data_type: uuid
+      - name: maintainer
+        data_type: varchar
+      - name: maintainer_email
+        data_type: varchar
+      - name: dataset_status
+        data_type: varchar
+      - name: is_private
+        data_type: boolean
+      - name: is_open
+        data_type: boolean
+      - name: license_id
+        data_type: varchar
+      - name: tags
+        data_type: struct(display_name varchar, id uuid, "name" varchar, state varchar, vocabulary_id json)[]
+      - name: metadata_created
+        data_type: timestamp
+      - name: metadata_modified
+        data_type: timestamp

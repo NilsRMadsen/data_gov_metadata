@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: generated
+    schema: landing
+    tables:
+      - name: date_spine
+        description: "A generated list of dates"
+        meta:
+          dagster:
+            asset_key: ["generated_date_spine"]

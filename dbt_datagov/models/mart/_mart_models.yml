@@ -1,0 +1,199 @@
+version: 2
+
+models:
+  - name: fact_dataset
+    description: "One record for each dataset published on Data.gov"
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: package_id
+        data_type: uuid
+        description: PK
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: name
+        data_type: varchar
+      - name: title
+        data_type: varchar
+      - name: notes
+        data_type: varchar
+      - name: organization_id
+        data_type: uuid
+        description: FK to dim_organization
+      - name: maintainer
+        data_type: varchar
+      - name: maintainer_email
+        data_type: varchar
+      - name: dataset_status
+        data_type: varchar
+      - name: is_private
+        data_type: boolean
+      - name: is_open
+        data_type: boolean
+      - name: license_id
+        data_type: varchar
+        description: FK to dim_license
+      - name: created_at
+        data_type: timestamp
+      - name: modified_at
+        data_type: timestamp
+
+  - name: dim_calendar
+    description: "An exhaustive list of dates. One row per calendar date."
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: calendar_date
+        data_type: date
+        description: PK
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: calendar_year
+        data_type: bigint
+      - name: calendar_quarter
+        data_type: bigint
+      - name: calendar_month
+        data_type: bigint
+      - name: day_of_year
+        data_type: bigint
+      - name: day_of_month
+        data_type: bigint
+      - name: day_of_week
+        data_type: bigint
+        description: "ISO day of week. 1=Monday, 7=Sunday"
+      - name: iso_week_of_year
+        data_type: bigint
+      - name: quarter_name
+        data_type: varchar
+      - name: month_name
+        data_type: varchar
+      - name: month_abbr
+        data_type: varchar
+      - name: day_of_week_name
+        data_type: varchar
+      - name: day_of_week_abbr
+        data_type: varchar
+      - name: start_of_year
+        data_type: date
+      - name: start_of_quarter
+        data_type: date
+      - name: start_of_month
+        data_type: date
+      - name: end_of_month
+        data_type: date
+      - name: start_of_week
+        data_type: date
+        description: "Start of ISO week"
+
+  - name: dim_dataset_group
+    description: "One record for each combination of dataset and group."
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - package_id
+            - group_id
+    columns:
+      - name: package_id
+        data_type: uuid
+        description: FK to fact_dataset
+        constraints:
+          - type: not_null
+      - name: group_id
+        data_type: uuid
+        description: Unique id for the group
+        constraints:
+          - type: not_null
+      - name: group_name
+        data_type: varchar
+      - name: group_title
+        data_type: varchar
+
+  - name: dim_dataset_tag
+    description: "One record for each combination of dataset and tag"
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - package_id
+            - tag_name
+    columns:
+      - name: package_id
+        data_type: uuid
+        description: FK to fact_dataset
+        constraints:
+          - type: not_null
+      - name: tag_name
+        data_type: varchar
+        constraints:
+          - type: not_null
+
+  - name: dim_license
+    description: "One record for each dataset license type"
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: license_id
+        data_type: varchar
+        description: PK
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: title
+        data_type: varchar
+      - name: license_status
+        data_type: varchar
+      - name: domain_content
+        data_type: boolean
+      - name: domain_data
+        data_type: boolean
+      - name: domain_software
+        data_type: boolean
+      - name: is_generic
+        data_type: boolean
+      - name: od_conformance
+        data_type: varchar
+      - name: osd_conformance
+        data_type: varchar
+      - name: license_url
+        data_type: varchar
+
+  - name: dim_organization
+    description: "One record for each government organization that publishes datasets on Data.gov"
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: organization_id
+        data_type: uuid
+        description: PK
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: name
+        data_type: varchar
+      - name: title
+        data_type: varchar
+      - name: organization_type
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: organization_status
+        data_type: varchar
+      - name: approval_status
+        data_type: varchar
+      - name: created_at
+        data_type: timestamp

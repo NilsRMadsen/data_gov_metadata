@@ -1,0 +1,38 @@
+version: 2
+
+sources:
+  - name: datagov
+    schema: landing
+    freshness:
+      warn_after:
+        count: 2
+        period: day
+      error_after:
+        count: 5
+        period: day
+    loaded_at_field: inserted_at
+    tables:
+      - name: group
+        description: "One record for each dataset group"
+        identifier: datagov_group
+        meta:
+          dagster:
+            asset_key: ["datagov_group"]
+      - name: license
+        description: "One record for each dataset license type"
+        identifier: datagov_license
+        meta:
+          dagster:
+            asset_key: ["datagov_license"]
+      - name: organization
+        description: "One record for each government organization that publishes datasets on Data.gov"
+        identifier: datagov_organization
+        meta:
+          dagster:
+            asset_key: ["datagov_organization"]
+      - name: package
+        description: "One record per dataset published on Data.gov"
+        identifier: datagov_package
+        meta:
+          dagster:
+            asset_key: ["datagov_package"]

@@ -1,0 +1,11 @@
+datagov_duckdb:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: 'database/data_gov_metadata.duckdb'
+      schema: dev
+    prod:
+      type: duckdb
+      path: 'database/data_gov_metadata.duckdb'
+      schema: prod

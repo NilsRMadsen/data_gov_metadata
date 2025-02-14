@@ -1,0 +1,7 @@
+
+target/
+dbt_packages/
+logs/
+database/
+generate_model_yaml_tool.sql
+.user.yml
