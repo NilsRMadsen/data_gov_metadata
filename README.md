@@ -1,6 +1,8 @@
 # Data.gov Metadata Visualization
 ## Nils Madsen
 
+This project is a work-in-progress. Not all steps have been implemented yet.
+
 ### Description
 This project implements a local version of the Modern Data Stack, in order to visualize and explore metadata about the hundreds of thousands of datasets available on Data.gov (https://data.gov/). This metadata is a little more interesting from a data engineering and modeling standpoint than the published datasets themselves, as most of those are standalone and pre-aggregated, without any cross-referencing relational structure.
 
