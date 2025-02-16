@@ -27,4 +27,4 @@ Other convenient, but not required, tools for interacting with this project incl
 1. DBeaver (https://dbeaver.io/) as a SQL editor for DuckDB
 
 ### A Quick Note on Ingestion
-There are open-source tools available for ingestion, e.g. Airbyte and dltHub. I have chosen not to use them for this project because I felt they would overcomplicate and obscure what is otherwise a relatively simple ingestion pipeline. Therefore, I have elected to build a custom ingestion module with the requests library.
+There are open-source tools available for ingestion, e.g. Airbyte and dltHub. I have chosen not to use them for this project because I felt that would overcomplicate and obscure what is otherwise a relatively simple pipeline. Therefore, I have elected to build custom ingestion code using the requests library.
