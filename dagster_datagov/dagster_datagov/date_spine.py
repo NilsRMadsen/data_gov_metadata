@@ -1,4 +1,7 @@
-from . import config
+try:
+    from . import config
+except ImportError:
+    import config
 
 import duckdb
 import json

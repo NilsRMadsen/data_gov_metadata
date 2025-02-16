@@ -1,4 +1,7 @@
-from . import config
+try:
+    from . import config, utilities
+except ImportError:
+    import config, utilities
 
 import argparse
 import duckdb
@@ -8,30 +11,6 @@ import time
 
 from io import StringIO
 from time import sleep
-
-
-def format_time(secs):
-    '''
-    Format seconds as HH:MM:SS.000
-    '''
-    hour_str = f'{str(int(secs // 3600)).zfill(2)}'
-    min_str = f'{str(int((secs % 3600) // 60)).zfill(2)}'
-    sec_str = '{:06.3f}'.format(secs % 60)
-
-    return f'{hour_str}:{min_str}:{sec_str}'
-
-
-def find(d, path):
-    '''
-    Get the value in a nested indexible object d, reached via the provided path (list).
-    '''
-    value = d
-    for key in path:
-        try:
-            value = value[key]
-        except KeyError:
-            return None
-    return value
 
 
 def get_with_retries(url, params=None, stream=False, max_retries=5):
@@ -175,7 +154,7 @@ def run_pipeline(target_endpoint, backfill=False):
         while True:
 
             with get_with_retries(url, params=params, stream=True) as r:
-                page_records = find(json.load(r.raw), endpoint_config['path_to_records'])
+                page_records = utilities.find(json.load(r.raw), endpoint_config['path_to_records'])
 
             num_records = len(page_records)
             print(f'Collected {num_records} records from page {page_num}')
@@ -213,7 +192,7 @@ def run_pipeline(target_endpoint, backfill=False):
     # report time elapsed for pipeline
     end_time = time.time()
     elapsed = end_time - start_time
-    print(f'Elapsed time {format_time(elapsed)}\n')
+    print(f'Elapsed time {utilities.format_time(elapsed)}\n')
 
 
 if __name__ == '__main__':

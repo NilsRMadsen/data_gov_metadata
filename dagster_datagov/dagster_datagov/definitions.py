@@ -1,7 +1,11 @@
+try:
+    from . import datagov_api_pipeline, date_spine
+except ImportError:
+    import datagov_api_pipeline, date_spine
+
 import dagster as dg
 
 from dagster_dbt import dbt_assets, DbtCliResource, DbtProject
-from ingestion import date_spine, datagov_api_pipeline
 from pathlib import Path
 
 
@@ -28,7 +32,7 @@ def datagov_package(context: dg.AssetExecutionContext) -> None:
 
 
 # dbt integration
-dbt_project_directory = Path(__file__).absolute().parent.parent / "dbt_datagov"
+dbt_project_directory = Path(__file__).absolute().parent.parent.parent / "dbt_datagov"
 dbt_project = DbtProject(project_dir=dbt_project_directory)
 dbt_resource = DbtCliResource(project_dir=dbt_project)
 dbt_project.prepare_if_dev()
