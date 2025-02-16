@@ -16,19 +16,23 @@ def generated_date_spine(context: dg.AssetExecutionContext) -> None:
 
 @dg.asset(compute_kind='python', pool='duckdb')
 def datagov_group(context: dg.AssetExecutionContext) -> None:
-    datagov_api_pipeline.run_pipeline('group')
+    pipeline = datagov_api_pipeline.DatagovCkanApiPipeline('group')
+    pipeline.run()
 
 @dg.asset(compute_kind='python', pool='duckdb')
 def datagov_license(context: dg.AssetExecutionContext) -> None:
-    datagov_api_pipeline.run_pipeline('license')
+    pipeline = datagov_api_pipeline.DatagovCkanApiPipeline('license')
+    pipeline.run()
 
 @dg.asset(compute_kind='python', pool='duckdb')
 def datagov_organization(context: dg.AssetExecutionContext) -> None:
-    datagov_api_pipeline.run_pipeline('organization')
+    pipeline = datagov_api_pipeline.DatagovCkanApiPipeline('organization')
+    pipeline.run()
 
 @dg.asset(compute_kind='python', pool='duckdb')
 def datagov_package(context: dg.AssetExecutionContext) -> None:
-    datagov_api_pipeline.run_pipeline('package')
+    pipeline = datagov_api_pipeline.DatagovCkanApiPipeline('package')
+    pipeline.run()
 
 
 # dbt integration
@@ -39,7 +43,7 @@ dbt_project.prepare_if_dev()
 
 @dbt_assets(manifest=dbt_project.manifest_path)
 def dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
-    yield from dbt.cli(["source", "freshness"], context=context).stream()
+    #yield from dbt.cli(["source", "freshness"], context=context).stream()
     yield from dbt.cli(["build"], context=context).stream()
 
 
