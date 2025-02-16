@@ -13,186 +13,190 @@ from io import StringIO
 from time import sleep
 
 
-def get_with_retries(url, params=None, stream=False, max_retries=5):
-    '''
-    Make a GET request to an API, with retries if necessary
-    '''
-    for retry_num in range(1, max_retries+1):
-        r = requests.get(url, params=params, stream=stream)
-        
-        if r.ok:
-            return r
-        
+class DatagovCkanApiPipeline():
+
+    def __init__(self, endpoint_name, backfill=False):
+
+        self.endpoint_name = endpoint_name
+        self.backfill = backfill
+
+        # build query parameters from config
+        self.endpoint_config = config.ENDPOINTS.get(self.endpoint_name)
+
+        if not self.endpoint_config:
+            raise ValueError(f'No endpoint named "{self.endpoint_name}" was found in config.ENDPOINTS')
+
+        self.url = config.BASE_URL + self.endpoint_config['endpoint']
+
+        if self.backfill and self.endpoint_config.get('backfill_params'):
+            self.params = self.endpoint_config['backfill_params']
         else:
-            # server errors should lead to retries
-            if r.status_code >= 500:
-                print(f'API returned status code {r.status_code} with reason "{r.reason}". Retrying.')
+            self.params = self.endpoint_config.get('params', dict())
+        
+        self.limit_parameter = self.endpoint_config['pagination']['limit_parameter']
+        self.params[self.limit_parameter] = self.endpoint_config['pagination']['limit_value']
 
-            # bad request errors should throw an exception
-            elif r.status_code >= 400:
-                raise RuntimeError(f'API returned status code {r.status_code} with reason "{r.reason}".')
+        self.offset_parameter = self.endpoint_config['pagination']['offset_parameter']
+        self.params[self.offset_parameter] = 0
+
+        self.max_pages = self.endpoint_config['pagination'].get('max_pages')
+
+        # build database write/update parameters from config
+        self.db_path = config.DB_PATH
+        self.dest_table = f'{config.LANDING_SCHEMA}.{self.endpoint_config['destination_table']}'
+        self.primary_key = self.endpoint_config.get('primary_key')
+        self.update_mode = self.endpoint_config['update_mode']
+        self.write_mode = self.endpoint_config['write_mode']
+
+    
+    def get_with_retries(self, max_retries=5):
+        '''
+        Make a GET request to an API, with retries if necessary
+        '''
+        for retry_num in range(1, max_retries+1):
+            r = requests.get(self.url, params=self.params, stream=True)
             
-            if retry_num >= max_retries:
-                raise RuntimeError('Max retries exhausted when making GET request to API.')
-
+            if r.ok:
+                return r
+            
+            else:
+                # server errors should lead to retries
+                if r.status_code >= 500:
+                    print(f'API returned status code {r.status_code} with reason "{r.reason}". Retrying.')
+                    
+                # bad request errors should throw an exception
+                elif r.status_code >= 400:
+                    raise RuntimeError(f'API returned status code {r.status_code} with reason "{r.reason}".')
+            
             sleep(3)
-
-
-def write_to_duckdb(conn, records, dest_table, primary_key, update_mode):
-    '''
-    Write API records to the DuckDB data warehouse.
-
-    Parameters:
-    - conn: The active DuckDB connection
-    - records: (list of dicts) The records to write to the database
-    - dest_table: (str) The schema.table to write the data into
-    - primary_key: (str) The name of the primary key for upserts.
-    - update_mode: (str) How to update the destination table with the new data
-
-    '''
-    with StringIO() as f:
-        json.dump(records, f)
-        f.seek(0)
-
-        data = conn.read_json(f)
-    
-        # for small tables of mutable data, full reloads are simple and self-healing
-        if update_mode == 'full_reload':
-            conn.sql(f'''
-                        
-                BEGIN TRANSACTION;
-
-                DELETE FROM {dest_table}
-                ;
-
-                INSERT INTO {dest_table}
-                BY NAME
-                SELECT
-                    *
-                    , CURRENT_LOCALTIMESTAMP() as inserted_at
-                FROM data
-                ;
-
-                COMMIT;
-
-            ''')
         
-        # for larger datasets that should be updated incrementally, upserting with replacement
-        # can yield some self-healing while keeping compute and API usage reasonable
-        elif update_mode == 'upsert_replace':
-            conn.sql(f'''
-                
-                BEGIN TRANSACTION;
-                
-                DELETE FROM {dest_table}
-                WHERE
-                    {primary_key} IN (SELECT {primary_key} FROM data)
-                ;
+        raise RuntimeError('Max retries exhausted when making GET request to API.')
 
-                INSERT INTO {dest_table}
-                BY NAME
-                SELECT
-                    *
-                    , CURRENT_LOCALTIMESTAMP() as inserted_at
-                FROM data
-                ;
 
-                COMMIT;
+    def write_to_duckdb(self, records):
+        '''
+        Write API records to the DuckDB data warehouse.
+        '''
+        with StringIO() as f:
+            json.dump(records, f)
+            f.seek(0)
 
-            ''')
-
-        # for development purposes only - do not use in production due to risk of schema drift
-        elif update_mode == 'create_table':
-            conn.sql(f'''
-                        
-                CREATE OR REPLACE TABLE {dest_table} AS
-                SELECT
-                    *
-                    , CURRENT_LOCALTIMESTAMP() as inserted_at
-                FROM data
-
-            ''')
+            data = self.conn.read_json(f)
         
-    print(f'    Wrote {len(records)} records to DuckDB')
+            # for small tables of mutable data, full reloads are simple and self-healing
+            if self.update_mode == 'full_reload':
+                self.conn.sql(f'''
+                            
+                    BEGIN TRANSACTION;
+
+                    DELETE FROM {self.dest_table}
+                    ;
+
+                    INSERT INTO {self.dest_table}
+                    BY NAME
+                    SELECT
+                        *
+                        , CURRENT_LOCALTIMESTAMP() as inserted_at
+                    FROM data
+                    ;
+
+                    COMMIT;
+
+                ''')
+            
+            # for larger datasets that should be updated incrementally, upserting with replacement
+            # can yield some self-healing while keeping compute and API usage reasonable
+            elif self.update_mode == 'upsert_replace':
+                self.conn.sql(f'''
+                    
+                    BEGIN TRANSACTION;
+                    
+                    DELETE FROM {self.dest_table}
+                    WHERE
+                        {self.primary_key} IN (SELECT {self.primary_key} FROM data)
+                    ;
+
+                    INSERT INTO {self.dest_table}
+                    BY NAME
+                    SELECT
+                        *
+                        , CURRENT_LOCALTIMESTAMP() as inserted_at
+                    FROM data
+                    ;
+
+                    COMMIT;
+
+                ''')
+
+            # for development purposes only - do not use in production due to risk of schema drift
+            elif self.update_mode == 'create_table':
+                self.conn.sql(f'''
+                            
+                    CREATE OR REPLACE TABLE {self.dest_table} AS
+                    SELECT
+                        *
+                        , CURRENT_LOCALTIMESTAMP() as inserted_at
+                    FROM data
+
+                ''')
+            
+        print(f'    Wrote {len(records)} records to DuckDB')
 
 
-def run_pipeline(target_endpoint, backfill=False):
+    def run(self):
 
-    start_time = time.time()
-    print(f'\nStarting pipeline for endpoint "{target_endpoint}"\n')
+        start_time = time.time()
+        print(f'\nStarting pipeline for endpoint "{self.endpoint_name}"\n')
 
-    # build query parameters from config
-    endpoint_config = config.ENDPOINTS[target_endpoint]
+        # get records from API
+        records = list()
+        page_num = 1
 
-    if backfill and endpoint_config.get('backfill_params'):
-        params = endpoint_config['backfill_params']
-    else:
-        params = endpoint_config.get('params', dict())
-    
-    limit_parameter = endpoint_config['pagination']['limit_parameter']
-    params[limit_parameter] = endpoint_config['pagination']['limit_value']
+        with duckdb.connect(self.db_path) as self.conn:
 
-    offset_parameter = endpoint_config['pagination']['offset_parameter']
-    params[offset_parameter] = 0
+            # loop through API pages
+            while True:
 
-    # build database write parameters from config
-    dest_table = f'{config.LANDING_SCHEMA}.{endpoint_config['destination_table']}'
-    primary_key = endpoint_config.get('primary_key')
-    update_mode = endpoint_config['update_mode']
-    write_mode = endpoint_config['write_mode']
+                with self.get_with_retries() as r:
+                    page_records = utilities.find(json.load(r.raw), self.endpoint_config['path_to_records'])
 
-    # get records from API
-    url = config.BASE_URL + endpoint_config['endpoint']
-    records = list()
-    page_num = 1
+                num_records = len(page_records)
+                print(f'Collected {num_records} records from page {page_num}')
 
-    with duckdb.connect(config.DB_PATH) as conn:
+                # if there are no records on this page, we have gone past the last page
+                if num_records == 0:
+                    print('Pagination terminated')
+                    break
 
-        # loop through API pages
-        max_pages = endpoint_config['pagination'].get('max_pages')
+                # select fields, if needed
+                field_list = self.endpoint_config.get('fields')
 
-        while True:
+                if field_list:
+                    for i, record in enumerate(page_records):
+                        page_records[i] = {field: record[field] for field in field_list}
 
-            with get_with_retries(url, params=params, stream=True) as r:
-                page_records = utilities.find(json.load(r.raw), endpoint_config['path_to_records'])
+                if self.write_mode == 'page_chunks':
+                    self.write_to_duckdb(page_records)
+                else:
+                    records.extend(page_records)
 
-            num_records = len(page_records)
-            print(f'Collected {num_records} records from page {page_num}')
+                # keep paging until max_pages is reached or no records are returned
+                if self.max_pages and page_num >= self.max_pages:
+                    print('Pagination terminated')
+                    break
+                else:
+                    page_num += 1
+                    self.params[self.offset_parameter] += num_records
 
-            # if there are no records on this page, we have gone past the last page
-            if num_records == 0:
-                print('Pagination terminated')
-                break
+            if self.write_mode == 'single_batch':
+                self.write_to_duckdb(records)
 
-            # select fields, if needed
-            field_list = endpoint_config.get('fields')
+        print('\nPipeline run complete.')
 
-            if field_list:
-                for i, record in enumerate(page_records):
-                    page_records[i] = {field: record[field] for field in field_list}
-
-            if write_mode == 'page_chunks':
-                write_to_duckdb(conn, page_records, dest_table, primary_key, update_mode)
-            else:
-                records.extend(page_records)
-
-            # keep paging until max_pages is reached or no records are returned
-            if max_pages and page_num >= max_pages:
-                print('Pagination terminated')
-                break
-            else:
-                page_num += 1
-                params[offset_parameter] += num_records
-
-        if write_mode == 'single_batch':
-            write_to_duckdb(conn, records, dest_table, primary_key, update_mode)
-
-    print('\nPipeline run complete.')
-
-    # report time elapsed for pipeline
-    end_time = time.time()
-    elapsed = end_time - start_time
-    print(f'Elapsed time {utilities.format_time(elapsed)}\n')
+        # report time elapsed for pipeline
+        end_time = time.time()
+        elapsed = end_time - start_time
+        print(f'Elapsed time {utilities.format_time(elapsed)}\n')
 
 
 if __name__ == '__main__':
@@ -203,4 +207,6 @@ if __name__ == '__main__':
     parser.add_argument('-bf', '--backfill', help='Run a complete backfill of history.', action='store_true')
     args = parser.parse_args()
 
-    run_pipeline(args.target, args.backfill)
+    # build and run pipeline
+    pipeline = DatagovCkanApiPipeline(args.target, args.backfill)
+    pipeline.run()
