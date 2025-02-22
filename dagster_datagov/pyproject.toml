@@ -20,7 +20,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.dagster]
-module_name = "dagster_datagov.definitions"
+module_name = "dagster_datagov"
 code_location_name = "dagster_datagov"
 
 [tool.setuptools.packages.find]
