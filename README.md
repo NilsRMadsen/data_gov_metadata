@@ -18,7 +18,7 @@ All components of this project are completely free and open source:
 2. The Python requests library (https://requests.readthedocs.io/en/latest/) for extracting the data
 3. DuckDB (https://duckdb.org/docs/) as a local OLAP data warehouse
 4. dbt Core (https://docs.getdbt.com/docs/core/installation-overview) for transforming and modeling the data
-5. Dagster (https://docs.dagster.io/) for orchestration, end-to-end lineage tracing, and monitoring
+5. Dagster (https://docs.dagster.io/) for scheduling, orchestration, and global lineage tracing
 6. Apache Superset (https://superset.apache.org/docs/intro) for visualizing the data
 
 This project follows an ELT pattern, first extracting and loading the raw data directly into DuckDB, then using dbt to transform the data within the data warehouse.

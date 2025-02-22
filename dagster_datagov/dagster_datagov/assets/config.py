@@ -1,7 +1,8 @@
 from pathlib import Path
 
 # destination database
-DB_PATH = Path(__file__).absolute().parent.parent.parent / "dbt_datagov/database/data_gov_metadata.duckdb"
+DBT_PATH = Path(__file__).absolute().parent.parent.parent.parent / "dbt_datagov"
+DB_PATH = DBT_PATH / "database/data_gov_metadata.duckdb"
 LANDING_SCHEMA = 'landing'
 
 # API
